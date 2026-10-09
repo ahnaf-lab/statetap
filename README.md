@@ -5,9 +5,9 @@ Every `tap()` call snapshots the target and records a minimal JSON-patch
 diff with a timestamp, so you can see exactly what changed and when
 without wiring up framework-specific DevTools.
 
-This milestone implements the diff engine: snapshotting and minimal
-diff computation. A local time-travel UI for scrubbing through recorded
-history is planned for a later milestone.
+It also ships a local, single-file time-travel UI: point `serveTap()`
+at a tracker and open the page it serves in a browser to scrub through
+every recorded step and see the state and diff at that point.
 
 ## Install
 
@@ -57,6 +57,42 @@ statetap tracks JSON-compatible data (plain objects, arrays, strings,
 numbers, booleans, `null`). Functions, class instances, and other
 non-JSON values are not supported, since diffs are snapshotted via
 JSON cloning so they stay dependency-free and easy to serialize.
+
+### Time-travel UI
+
+`serveTap()` starts a plain `node:http` server that serves a single
+self-contained HTML page (no bundler, no external assets) plus one
+JSON endpoint it reads from:
+
+```js
+const { createTap, serveTap } = require('statetap');
+
+const store = { count: 0, label: 'idle' };
+const tracker = createTap(store);
+
+serveTap(tracker).then((server) => {
+  const { port } = server.address();
+  console.log(`statetap UI at http://127.0.0.1:${port}/`);
+});
+
+store.count = 1;
+tracker.tap();
+```
+
+- `GET /` — the time-travel UI: a slider that scrubs through every
+  recorded step, showing the reconstructed state and the diff
+  recorded at that step.
+- `GET /history.json` — the tracker's current `getHistory()` output,
+  as JSON.
+
+`serveTap(tracker, options)` returns a promise that resolves to the
+started `http.Server` once it is listening. By default it binds only
+to `127.0.0.1` on an OS-assigned port, since the page exposes the
+tracked object's full state history and is meant for local debugging,
+not for exposing on a network. Pass `{ port, host }` to override
+either. Call `createServer(tracker)` instead if you want the
+unstarted `http.Server` to wire up yourself (e.g. to mount it behind
+an existing server).
 
 ## Status
 
