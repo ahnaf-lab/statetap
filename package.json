@@ -1,0 +1,15 @@
+{
+  "name": "statetap",
+  "version": "0.1.0",
+  "description": "Attach to any plain object or store and record minimal JSON-patch diffs with timestamps on every tap() call.",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}
