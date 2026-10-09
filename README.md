@@ -112,6 +112,68 @@ either. Call `createServer(tracker)` instead if you want the
 unstarted `http.Server` to wire up yourself (e.g. to mount it behind
 an existing server).
 
+## Adapters
+
+`createTap` snapshots a mutable object on demand, by re-reading it
+every time you call `tap()`. That fits a plain object or class
+instance you mutate in place, but it doesn't fit state containers like
+Redux or Zustand, which replace their entire state with a new object
+on every update and announce that moment themselves instead of
+waiting to be polled.
+
+For those, use `tapStore(store)` instead. It works with anything that
+exposes a `getState()` method and a `subscribe(listener)` method that
+calls `listener()` after each state change — which is the shape of a
+plain Redux store and of a Zustand vanilla store (the object `create()`
+returns), so the same adapter covers both without importing either
+library:
+
+```js
+const { tapStore, serveTap } = require('statetap');
+
+// Zustand
+const useStore = require('zustand').create((set) => ({
+  count: 0,
+  increment: () => set((s) => ({ count: s.count + 1 })),
+}));
+const tracker = tapStore(useStore);
+
+useStore.getState().increment();
+useStore.getState().increment();
+
+serveTap(tracker);
+```
+
+```js
+const { tapStore, serveTap } = require('statetap');
+const { createStore } = require('redux');
+
+function counter(state = { count: 0 }, action) {
+  if (action.type === 'increment') return { count: state.count + 1 };
+  return state;
+}
+
+const store = createStore(counter);
+const tracker = tapStore(store);
+
+store.dispatch({ type: 'increment' });
+
+serveTap(tracker);
+```
+
+`tapStore` returns an object with the same `getHistory()` /
+`getSnapshot()` methods as `createTap`'s tracker, so it plugs straight
+into `serveTap` / `createServer`, plus `unsubscribe()` to stop
+recording. It records one `add` entry up front from the store's state
+at the time `tapStore` was called, then one `replace`/`add`/`remove`
+diff per subsequent notification — it never calls `dispatch` or
+`setState` itself, it only reacts to the store's own notifications.
+
+Neither Zustand nor Redux is a dependency of this package — the
+adapter only relies on the `getState`/`subscribe` shape both libraries
+happen to share, so nothing is installed unless you bring the store
+library yourself.
+
 ## Status
 
 This project is built autonomously, milestone by milestone, and every
