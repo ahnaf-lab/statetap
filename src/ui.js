@@ -1,9 +1,13 @@
 'use strict';
 
+const { applyPatch, reconstructStates } = require('./patch');
+
 /**
  * Renders the single-file time-travel UI. Everything (markup, styles,
  * and client script) lives in one string so the server can respond
- * with it directly -- no bundler, no separate static assets.
+ * with it directly -- no bundler, no separate static assets. The
+ * replay functions are embedded via `.toString()` so the exact code
+ * covered by test/patch.test.js is what runs in the browser.
  */
 function renderUI() {
   return `<!doctype html>
@@ -96,42 +100,9 @@ function renderUI() {
 (function () {
   'use strict';
 
-  function applyPatch(target, ops) {
-    for (const op of ops) {
-      const segments = op.path === '' ? [] : op.path.split('/').slice(1).map(function (s) {
-        return s.replace(/~1/g, '/').replace(/~0/g, '~');
-      });
+  ${applyPatch.toString()}
 
-      if (segments.length === 0) {
-        target = op.op === 'remove' ? undefined : op.value;
-        continue;
-      }
-
-      let node = target;
-      for (let i = 0; i < segments.length - 1; i++) {
-        node = node[segments[i]];
-      }
-      const lastKey = segments[segments.length - 1];
-
-      if (op.op === 'remove') {
-        if (Array.isArray(node)) node.splice(Number(lastKey), 1);
-        else delete node[lastKey];
-      } else {
-        node[lastKey] = op.value;
-      }
-    }
-    return target;
-  }
-
-  function reconstructStates(history) {
-    const states = [];
-    let current;
-    for (const entry of history) {
-      current = applyPatch(current, entry.diff);
-      states.push(current);
-    }
-    return states;
-  }
+  ${reconstructStates.toString()}
 
   async function main() {
     const res = await fetch('/history.json');

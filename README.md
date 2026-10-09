@@ -81,9 +81,27 @@ tracker.tap();
 
 - `GET /` — the time-travel UI: a slider that scrubs through every
   recorded step, showing the reconstructed state and the diff
-  recorded at that step.
+  recorded at that step. Moving the slider replays the history's
+  diffs client-side up to the selected index — no server round trip
+  per step.
 - `GET /history.json` — the tracker's current `getHistory()` output,
   as JSON.
+
+The replay logic that reconstructs state from diffs
+(`applyPatch` / `reconstructStates`) is also exported from the
+package, in case you want to reconstruct a past state outside the
+browser UI:
+
+```js
+const { applyPatch, reconstructStates } = require('statetap');
+
+const states = reconstructStates(tracker.getHistory());
+states[2]; // the tracked object's state as of the 3rd tap()
+```
+
+The page embeds these exact functions (via `.toString()`) into its
+single-file client script, so the replay code that ships to the
+browser is the same code covered by the test suite.
 
 `serveTap(tracker, options)` returns a promise that resolves to the
 started `http.Server` once it is listening. By default it binds only

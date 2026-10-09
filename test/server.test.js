@@ -58,6 +58,20 @@ test('serveTap serves the tracker history as JSON at /history.json', async () =>
   }
 });
 
+test('the served page embeds the scrubber and its replay logic', async () => {
+  const tracker = createTap({ count: 0 });
+  const server = await serveTap(tracker);
+
+  try {
+    const res = await get(server, '/');
+    assert.match(res.body, /id="scrubber"/);
+    assert.match(res.body, /function applyPatch/);
+    assert.match(res.body, /function reconstructStates/);
+  } finally {
+    server.close();
+  }
+});
+
 test('unknown routes return 404', async () => {
   const tracker = createTap({ count: 0 });
   const server = await serveTap(tracker);
